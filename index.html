@@ -44,7 +44,7 @@
             margin-bottom: 30px;
         }
 
-        /* JSON Input Screen */  
+        /* JSON Input Screen */
         .json-input-screen textarea {
             width: 100%;
             height: 300px;
@@ -91,6 +91,16 @@
 
         .btn-secondary:hover {
             background: #e0e0e0;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(46, 204, 113, 0.4);
         }
 
         .center {
@@ -324,6 +334,89 @@
             margin-bottom: 30px;
         }
 
+        /* Export Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 700px;
+            width: 100%;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            color: #667eea;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .modal-close:hover {
+            background: #f0f0f0;
+        }
+
+        .export-textarea {
+            width: 100%;
+            flex: 1;
+            min-height: 300px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: none;
+            line-height: 1.6;
+            white-space: pre;
+            overflow: auto;
+        }
+
+        .modal-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
         /* Responsive */
         @media (max-width: 600px) {
             .options-grid {
@@ -414,7 +507,26 @@
             </div>
         </div>
 
-        <button class="btn btn-primary" onclick="restart()">Try Another Quiz</button>
+        <div class="center">
+            <button class="btn btn-success" onclick="openExport()">📄 Export Data</button>
+            <button class="btn btn-primary" onclick="restart()">Try Another Quiz</button>
+        </div>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal-overlay" id="exportModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">📋 Quiz Results Export</div>
+            <button class="modal-close" onclick="closeExport()">✕</button>
+        </div>
+        <textarea class="export-textarea" id="exportArea" readonly></textarea>
+        <div class="modal-actions">
+            <button class="btn btn-primary" onclick="copyExport()">📋 Copy to Clipboard</button>
+            <button class="btn btn-success" onclick="downloadExport()">💾 Download .txt</button>
+            <button class="btn btn-secondary" onclick="closeExport()">Close</button>
+        </div>
     </div>
 </div>
 
@@ -430,6 +542,7 @@
         total: 0
     };
     let answered = false;
+    let detailedResults = []; // Stores per-question results for export
 
     const labels = ['A', 'B', 'C', 'D'];
 
@@ -509,10 +622,10 @@
             validateQuiz(data);
             quizData = data;
             
-            // Set defaults
             if (typeof quizData.allowSkip !== 'boolean') quizData.allowSkip = true;
             
             scores = { correct: 0, wrong: 0, skipped: 0, total: quizData.questions.length };
+            detailedResults = [];
             currentQuestion = 0;
             
             document.getElementById('inputScreen').style.display = 'none';
@@ -533,12 +646,10 @@
         document.getElementById('totalQ').textContent = quizData.questions.length;
         document.getElementById('questionText').textContent = q.question;
         
-        // Skip button visibility
         const skipBtn = document.getElementById('skipBtn');
         skipBtn.style.display = quizData.allowSkip ? 'block' : 'none';
         skipBtn.disabled = false;
         
-        // Build options
         const grid = document.getElementById('optionsGrid');
         grid.innerHTML = '';
         
@@ -555,7 +666,6 @@
             grid.appendChild(btn);
         });
         
-        // Start timer
         startTimer();
     }
 
@@ -589,11 +699,24 @@
         }, 1000);
     }
 
+    function recordResult(selectedIndex, status) {
+        const q = quizData.questions[currentQuestion];
+        detailedResults.push({
+            questionIndex: currentQuestion,
+            question: q.question,
+            options: q.options,
+            selectedIndex: selectedIndex, // -1 for skipped/timeout, 0-3 for selected
+            correctIndex: q.correctAnswer,
+            status: status // 'correct', 'wrong', 'skipped', 'timeout'
+        });
+    }
+
     function timeUp() {
         if (answered) return;
         answered = true;
         disableAll();
         scores.wrong++;
+        recordResult(-1, 'timeout');
         revealCorrect();
         setTimeout(nextQuestion, 2000);
     }
@@ -610,10 +733,12 @@
         if (index === q.correctAnswer) {
             buttons[index].classList.add('correct');
             scores.correct++;
+            recordResult(index, 'correct');
         } else {
             buttons[index].classList.add('wrong');
             buttons[q.correctAnswer].classList.add('reveal-correct');
             scores.wrong++;
+            recordResult(index, 'wrong');
         }
         
         setTimeout(nextQuestion, 1500);
@@ -625,6 +750,7 @@
         clearInterval(timerInterval);
         disableAll();
         scores.skipped++;
+        recordResult(-1, 'skipped');
         revealCorrect();
         setTimeout(nextQuestion, 1000);
     }
@@ -671,13 +797,95 @@
         document.getElementById('feedback').textContent = feedback;
     }
 
+    function generateExportText() {
+        let lines = [];
+        lines.push('=====================================');
+        lines.push('         QUIZ RESULTS EXPORT');
+        lines.push('=====================================');
+        lines.push(`Quiz Title: ${quizData.title || 'Untitled Quiz'}`);
+        lines.push(`Total Questions: ${scores.total}`);
+        lines.push(`Correct: ${scores.correct} | Wrong: ${scores.wrong} | Skipped/Timeout: ${scores.skipped}`);
+        lines.push(`Score: ${Math.round((scores.correct / scores.total) * 100)}%`);
+        lines.push('=====================================');
+        lines.push('');
+
+        detailedResults.forEach((r, i) => {
+            lines.push(`question ${i + 1}`);
+            lines.push(r.question);
+            
+            r.options.forEach((opt, idx) => {
+                const isSelected = (r.selectedIndex === idx);
+                const marker = isSelected ? '(selected)' : '';
+                // Pad option text to align markers roughly
+                lines.push(`${labels[idx]}: ${opt}${marker ? ' ' + marker : ''}`);
+            });
+            
+            lines.push(`Answer: ${labels[r.correctIndex]}`);
+            
+            if (r.status === 'correct') {
+                lines.push('correct');
+            } else if (r.status === 'wrong') {
+                lines.push('wrong');
+            } else if (r.status === 'skipped') {
+                lines.push('skipped');
+            } else if (r.status === 'timeout') {
+                lines.push('timeout (time ran out)');
+            }
+            
+            lines.push(''); // blank line between questions
+        });
+
+        return lines.join('\n');
+    }
+
+    function openExport() {
+        const text = generateExportText();
+        document.getElementById('exportArea').value = text;
+        document.getElementById('exportModal').classList.add('active');
+    }
+
+    function closeExport() {
+        document.getElementById('exportModal').classList.remove('active');
+    }
+
+    function copyExport() {
+        const area = document.getElementById('exportArea');
+        area.select();
+        document.execCommand('copy');
+        
+        const btn = event.target;
+        const original = btn.textContent;
+        btn.textContent = '✅ Copied!';
+        setTimeout(() => btn.textContent = original, 1500);
+    }
+
+    function downloadExport() {
+        const text = document.getElementById('exportArea').value;
+        const title = (quizData.title || 'quiz-results').replace(/\s+/g, '-').toLowerCase();
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${title}-results.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
     function restart() {
         document.getElementById('inputScreen').style.display = 'block';
         document.getElementById('quizScreen').style.display = 'none';
         document.getElementById('resultsScreen').style.display = 'none';
         document.getElementById('jsonInput').value = '';
         showError('');
+        detailedResults = [];
     }
+
+    // Close modal on overlay click
+    document.getElementById('exportModal').addEventListener('click', function(e) {
+        if (e.target === this) closeExport();
+    });
 </script>
 
 </body>
