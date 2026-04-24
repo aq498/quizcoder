@@ -255,7 +255,7 @@
         }
 
         .skip-btn {
-            background: #95a5a6;
+            background: #1B62F2;
             color: white;
             width: 100%;
             padding: 16px;
@@ -268,11 +268,12 @@
         }
 
         .skip-btn:hover:not(:disabled) {
-            background: #7f8c8d;
+            background: #064BD6;
             transform: translateY(-1px);
         }
 
         .skip-btn:disabled {
+             background: #BFBFBF;
             opacity: 0.5;
             cursor: not-allowed;
         }
@@ -784,7 +785,7 @@
         document.getElementById('scoreSkipped').textContent = scores.skipped;
         document.getElementById('scoreTotal').textContent = scores.total;
         
-        const pct = Math.round((scores.correct / scores.total) * 100);
+        const pct = ((scores.correct - 0.5 * scores.wrong) / scores.total) * 100;
         document.getElementById('percentage').textContent = pct + '%';
         
         let feedback = '';
@@ -805,7 +806,7 @@
         lines.push(`Quiz Title: ${quizData.title || 'Untitled Quiz'}`);
         lines.push(`Total Questions: ${scores.total}`);
         lines.push(`Correct: ${scores.correct} | Wrong: ${scores.wrong} | Skipped/Timeout: ${scores.skipped}`);
-        lines.push(`Score: ${Math.round((scores.correct / scores.total) * 100)}%`);
+        lines.push(`Score: ${((scores.correct - 0.5 * scores.wrong) / scores.total) * 100}%`);
         lines.push('=====================================');
         lines.push('');
 
