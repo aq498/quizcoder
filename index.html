@@ -785,7 +785,8 @@
         document.getElementById('scoreSkipped').textContent = scores.skipped;
         document.getElementById('scoreTotal').textContent = scores.total;
         
-        const pct = ((scores.correct - 0.5 * scores.wrong) / scores.total) * 100;
+        const rawPct = ((scores.correct - 0.5 * scores.wrong) / scores.total) * 100;
+        const pct = Math.max(0, rawPct).toFixed(1);
         document.getElementById('percentage').textContent = pct + '%';
         
         let feedback = '';
@@ -806,7 +807,9 @@
         lines.push(`Quiz Title: ${quizData.title || 'Untitled Quiz'}`);
         lines.push(`Total Questions: ${scores.total}`);
         lines.push(`Correct: ${scores.correct} | Wrong: ${scores.wrong} | Skipped/Timeout: ${scores.skipped}`);
-        lines.push(`Score: ${((scores.correct - 0.5 * scores.wrong) / scores.total) * 100}%`);
+        const rawPct = ((scores.correct - 0.5 * scores.wrong) / scores.total) * 100;
+        const pct = Math.max(0, rawPct).toFixed(1);
+        lines.push(`Score: ${pct}%`);
         lines.push('=====================================');
         lines.push('');
 
